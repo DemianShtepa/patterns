@@ -34,7 +34,7 @@ func CircuitBreaker(fn Function, maxAttempts uint, now TimeProvider, resetDurati
 
 		result, err := fn(ctx)
 		if err != nil {
-			attempts = attempts + 1
+			attempts++
 			resetTime = now().Add(resetDuration)
 
 			return result, err
