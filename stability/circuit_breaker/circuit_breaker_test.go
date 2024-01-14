@@ -86,7 +86,7 @@ func TestCircuitBreakerResetsAttempts(t *testing.T) {
 	}
 }
 
-func TestConcurrentCircuitBreakerAccess(t *testing.T) {
+func TestCircuitBreakerConcurrentAccess(t *testing.T) {
 	maxAttempts := 3
 	resetDuration := time.Second
 	circuitBreaker := CircuitBreaker(successFunction, uint(maxAttempts), currentTimeProvider, resetDuration)
