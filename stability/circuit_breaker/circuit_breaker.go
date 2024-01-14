@@ -1,4 +1,4 @@
-package stability
+package circuit_breaker
 
 import (
 	"context"
