@@ -2,52 +2,21 @@ package debouncer_first
 
 import (
 	"context"
+	clockmocks "github.com/demianshtepa/patterns/clock/mocks"
+	debouncerfirstmocks "github.com/demianshtepa/patterns/stability/debouncer_first/mocks"
 	"sync"
 	"testing"
 	"time"
 )
 
-var (
-	function Function = func(ctx context.Context) (interface{}, error) {
-		return "Ok", nil
-	}
-	mockFunction = func() Function {
-		calls := [2]string{
-			"Ok0",
-			"Ok1",
-		}
-		var call int
-
-		return func(ctx context.Context) (interface{}, error) {
-			result := calls[call]
-			call++
-
-			return result, nil
-		}
-	}
-	currentTimeProvider TimeProvider = func() time.Time {
-		return time.Now()
-	}
-	mockTimeProvider = func() TimeProvider {
-		var attempt uint = 0
-		mainTime := time.Now()
-		fallbackTime := mainTime.Add(time.Hour)
-		return func() time.Time {
-			attempt++
-
-			if attempt >= 4 {
-				return fallbackTime
-			}
-
-			return mainTime
-		}
-	}
-)
-
 func TestDebounceFirstReturnsSuccessResult(t *testing.T) {
 	resetDuration := time.Second
-	debounce := DebounceFirst(function, currentTimeProvider, resetDuration)
 	ctx := context.Background()
+	mockFunction := debouncerfirstmocks.NewMockFunction(t)
+	mockFunction.EXPECT().Execute(ctx).Return("Ok", nil)
+	mockTime := clockmocks.NewMockTime(t)
+	mockTime.EXPECT().Now().Return(time.Now())
+	debounce := DebounceFirst(mockFunction.Execute, mockTime, resetDuration)
 
 	result, err := debounce(ctx)
 	if err != nil {
@@ -60,9 +29,12 @@ func TestDebounceFirstReturnsSuccessResult(t *testing.T) {
 
 func TestDebounceFirstReturnsFirstResult(t *testing.T) {
 	resetDuration := time.Second
-
-	debounce := DebounceFirst(mockFunction(), currentTimeProvider, resetDuration)
 	ctx := context.Background()
+	mockFunction := debouncerfirstmocks.NewMockFunction(t)
+	mockFunction.EXPECT().Execute(ctx).Return("Ok0", nil).Once()
+	mockTime := clockmocks.NewMockTime(t)
+	mockTime.EXPECT().Now().Return(time.Now())
+	debounce := DebounceFirst(mockFunction.Execute, mockTime, resetDuration)
 
 	expectations := [2]string{
 		"Ok0",
@@ -82,9 +54,15 @@ func TestDebounceFirstReturnsFirstResult(t *testing.T) {
 
 func TestDebounceFirstResetsResult(t *testing.T) {
 	resetDuration := time.Second
-
-	debounce := DebounceFirst(mockFunction(), mockTimeProvider(), resetDuration)
 	ctx := context.Background()
+	mockFunction := debouncerfirstmocks.NewMockFunction(t)
+	mockFunction.EXPECT().Execute(ctx).Return("Ok0", nil).Once()
+	mockFunction.EXPECT().Execute(ctx).Return("Ok1", nil).Once()
+	now := time.Now()
+	mockTime := clockmocks.NewMockTime(t)
+	mockTime.EXPECT().Now().Return(now).Times(3)
+	mockTime.EXPECT().Now().Return(now.Add(time.Hour)).Times(2)
+	debounce := DebounceFirst(mockFunction.Execute, mockTime, resetDuration)
 
 	expectations := [2]string{
 		"Ok0",
@@ -105,8 +83,12 @@ func TestDebounceFirstResetsResult(t *testing.T) {
 func TestDebounceFirstConcurrentAccess(t *testing.T) {
 	concurrentRequests := 3
 	resetDuration := time.Second
-	debounce := DebounceFirst(function, currentTimeProvider, resetDuration)
 	ctx := context.Background()
+	mockFunction := debouncerfirstmocks.NewMockFunction(t)
+	mockFunction.EXPECT().Execute(ctx).Return("Ok", nil)
+	mockTime := clockmocks.NewMockTime(t)
+	mockTime.EXPECT().Now().Return(time.Now())
+	debounce := DebounceFirst(mockFunction.Execute, mockTime, resetDuration)
 	var wg sync.WaitGroup
 
 	wg.Add(concurrentRequests)

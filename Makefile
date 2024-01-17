@@ -8,3 +8,5 @@ view-coverage:
 	go tool cover -html="c.out"
 test:
 	go test -cover -race ./...
+mockery:
+	mockery

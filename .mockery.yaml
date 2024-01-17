@@ -1,0 +1,19 @@
+with-expecter: true
+filename: "mock_{{.InterfaceName}}.go"
+dir: "{{.InterfaceDirRelative}}/mocks"
+mockname: "Mock{{.InterfaceName}}"
+outpkg: mocks
+packages:
+  github.com/demianshtepa/patterns/clock:
+    interfaces:
+      Time:
+      Ticker:
+  github.com/demianshtepa/patterns/stability/circuit_breaker:
+    interfaces:
+      Function:
+  github.com/demianshtepa/patterns/stability/debouncer_first:
+    interfaces:
+      Function:
+  github.com/demianshtepa/patterns/stability/debouncer_last:
+    interfaces:
+      Function:

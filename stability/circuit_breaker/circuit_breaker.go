@@ -3,26 +3,25 @@ package circuit_breaker
 import (
 	"context"
 	"errors"
+	"github.com/demianshtepa/patterns/clock"
 	"sync"
 	"time"
 )
 
 var ErrMaxAttemptsReached = errors.New("max attempts reached")
 
-type TimeProvider func() time.Time
-
 type Function func(context.Context) (interface{}, error)
 
-func CircuitBreaker(fn Function, maxAttempts uint, now TimeProvider, resetDuration time.Duration) Function {
+func CircuitBreaker(fn Function, maxAttempts uint, t clock.Time, resetDuration time.Duration) Function {
 	var attempts uint
-	resetTime := now()
+	resetTime := t.Now()
 	var mtx sync.RWMutex
 
 	return func(ctx context.Context) (interface{}, error) {
 		mtx.RLock()
 
 		if attempts >= maxAttempts {
-			if now().Before(resetTime) {
+			if t.Now().Before(resetTime) {
 				mtx.RUnlock()
 				return nil, ErrMaxAttemptsReached
 			}
@@ -35,7 +34,7 @@ func CircuitBreaker(fn Function, maxAttempts uint, now TimeProvider, resetDurati
 		result, err := fn(ctx)
 		if err != nil {
 			attempts++
-			resetTime = now().Add(resetDuration)
+			resetTime = t.Now().Add(resetDuration)
 
 			return result, err
 		}

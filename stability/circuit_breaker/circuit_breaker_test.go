@@ -3,40 +3,22 @@ package circuit_breaker
 import (
 	"context"
 	"errors"
+	clockmocks "github.com/demianshtepa/patterns/clock/mocks"
+	circuitbreakermocks "github.com/demianshtepa/patterns/stability/circuit_breaker/mocks"
 	"sync"
 	"testing"
 	"time"
 )
 
-var (
-	successFunction Function = func(ctx context.Context) (interface{}, error) {
-		return nil, nil
-	}
-	failFunction Function = func(ctx context.Context) (interface{}, error) {
-		return nil, errors.New("fail function called")
-	}
-	currentTimeProvider TimeProvider = func() time.Time {
-		return time.Now()
-	}
-	mockTimeProvider = func(maxAttempts uint, mainTime, fallbackTime time.Time) TimeProvider {
-		var attempt uint = 0
-		return func() time.Time {
-			attempt++
-
-			if attempt >= maxAttempts+2 {
-				return fallbackTime
-			}
-
-			return mainTime
-		}
-	}
-)
-
 func TestCircuitBreakerDoesntProduceErrors(t *testing.T) {
 	maxAttempts := 3
 	resetDuration := time.Second
-	circuitBreaker := CircuitBreaker(successFunction, uint(maxAttempts), currentTimeProvider, resetDuration)
 	ctx := context.Background()
+	mockNow := clockmocks.NewMockTime(t)
+	mockNow.EXPECT().Now().Return(time.Now())
+	mockFunction := circuitbreakermocks.NewMockFunction(t)
+	mockFunction.EXPECT().Execute(ctx).Return(nil, nil)
+	circuitBreaker := CircuitBreaker(mockFunction.Execute, uint(maxAttempts), mockNow, resetDuration)
 
 	for i := 0; i <= maxAttempts; i++ {
 		_, err := circuitBreaker(ctx)
@@ -49,8 +31,12 @@ func TestCircuitBreakerDoesntProduceErrors(t *testing.T) {
 func TestCircuitBreakerProducesErrors(t *testing.T) {
 	maxAttempts := 3
 	resetDuration := time.Second
-	circuitBreaker := CircuitBreaker(failFunction, uint(maxAttempts), currentTimeProvider, resetDuration)
 	ctx := context.Background()
+	mockNow := clockmocks.NewMockTime(t)
+	mockNow.EXPECT().Now().Return(time.Now())
+	mockFunction := circuitbreakermocks.NewMockFunction(t)
+	mockFunction.EXPECT().Execute(ctx).Return(nil, errors.New("fail function called"))
+	circuitBreaker := CircuitBreaker(mockFunction.Execute, uint(maxAttempts), mockNow, resetDuration)
 	var err error
 
 	for i := 0; i <= maxAttempts; i++ {
@@ -68,9 +54,14 @@ func TestCircuitBreakerProducesErrors(t *testing.T) {
 func TestCircuitBreakerResetsAttempts(t *testing.T) {
 	maxAttempts := 3
 	resetDuration := time.Second
-	mockTime := mockTimeProvider(uint(maxAttempts), time.Now().Add(time.Hour*(-1)), time.Now())
-	circuitBreaker := CircuitBreaker(failFunction, uint(maxAttempts), mockTime, resetDuration)
+	now := time.Now()
 	ctx := context.Background()
+	mockNow := clockmocks.NewMockTime(t)
+	mockNow.EXPECT().Now().Return(now).Times(4)
+	mockNow.EXPECT().Now().Return(now.Add(time.Hour)).Times(2)
+	mockFunction := circuitbreakermocks.NewMockFunction(t)
+	mockFunction.EXPECT().Execute(ctx).Return(nil, errors.New("fail function called"))
+	circuitBreaker := CircuitBreaker(mockFunction.Execute, uint(maxAttempts), mockNow, resetDuration)
 	var err error
 
 	for i := 0; i < maxAttempts; i++ {
@@ -89,8 +80,12 @@ func TestCircuitBreakerResetsAttempts(t *testing.T) {
 func TestCircuitBreakerConcurrentAccess(t *testing.T) {
 	maxAttempts := 3
 	resetDuration := time.Second
-	circuitBreaker := CircuitBreaker(successFunction, uint(maxAttempts), currentTimeProvider, resetDuration)
 	ctx := context.Background()
+	mockNow := clockmocks.NewMockTime(t)
+	mockNow.EXPECT().Now().Return(time.Now())
+	mockFunction := circuitbreakermocks.NewMockFunction(t)
+	mockFunction.EXPECT().Execute(ctx).Return(nil, nil)
+	circuitBreaker := CircuitBreaker(mockFunction.Execute, uint(maxAttempts), mockNow, resetDuration)
 	var wg sync.WaitGroup
 
 	wg.Add(maxAttempts)

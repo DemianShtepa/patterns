@@ -2,29 +2,28 @@ package debouncer_first
 
 import (
 	"context"
+	"github.com/demianshtepa/patterns/clock"
 	"sync"
 	"time"
 )
 
-type TimeProvider func() time.Time
-
 type Function func(context.Context) (interface{}, error)
 
-func DebounceFirst(fn Function, now TimeProvider, resetDuration time.Duration) Function {
+func DebounceFirst(fn Function, t clock.Time, resetDuration time.Duration) Function {
 	var result interface{}
 	var err error
 	var mx sync.Mutex
-	resetTime := now()
+	resetTime := t.Now()
 	return func(ctx context.Context) (interface{}, error) {
 		mx.Lock()
 		defer mx.Unlock()
 
-		if now().Before(resetTime) {
+		if t.Now().Before(resetTime) {
 			return result, err
 		}
 
 		result, err = fn(ctx)
-		resetTime = now().Add(resetDuration)
+		resetTime = t.Now().Add(resetDuration)
 
 		return result, err
 	}
