@@ -15,15 +15,15 @@ func TestDebounceLastReturnsEmptyFirstResult(t *testing.T) {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	mockFunction := debouncerlastmocks.NewMockFunction(t)
-	mockTime := clockmocks.NewMockTime(t)
-	mockTime.EXPECT().Now().Return(time.Now())
 	mockTicker := clockmocks.NewMockTicker(t)
-	mockTicker.EXPECT().Reset(time.Millisecond * 100)
 	mockTicker.EXPECT().Chan().Return(make(<-chan time.Time)).Once()
 	mockTicker.EXPECT().Stop().Run(func() {
 		wg.Done()
 	})
-	debounce := DebounceLast(mockFunction.Execute, mockTime, mockTicker, thresholdDuration)
+	mockTime := clockmocks.NewMockTime(t)
+	mockTime.EXPECT().Now().Return(time.Now())
+	mockTime.EXPECT().NewTicker(time.Millisecond * 100).Return(mockTicker)
+	debounce := DebounceLast(mockFunction.Execute, mockTime, thresholdDuration)
 
 	result, err := debounce(ctx)
 	if err != nil {
@@ -43,19 +43,19 @@ func TestDebounceLastReturnsSecondCallResult(t *testing.T) {
 	mockFunction := debouncerlastmocks.NewMockFunction(t)
 	mockFunction.EXPECT().Execute(ctx).Return("Ok", nil).Times(2)
 	now := time.Now()
-	mockTime := clockmocks.NewMockTime(t)
-	mockTime.EXPECT().Now().Return(now).Times(3)
-	mockTime.EXPECT().Now().Return(now.Add(time.Hour)).Once()
-	mockTime.EXPECT().Now().Return(now).Times(1)
-	mockTime.EXPECT().Now().Return(now.Add(time.Hour)).Once()
 	tickerChan := make(chan time.Time)
 	mockTicker := clockmocks.NewMockTicker(t)
-	mockTicker.EXPECT().Reset(time.Millisecond * 100)
 	mockTicker.EXPECT().Chan().Return(tickerChan)
 	mockTicker.EXPECT().Stop().Run(func() {
 		wg.Done()
 	})
-	debounce := DebounceLast(mockFunction.Execute, mockTime, mockTicker, thresholdDuration)
+	mockTime := clockmocks.NewMockTime(t)
+	mockTime.EXPECT().NewTicker(time.Millisecond * 100).Return(mockTicker)
+	mockTime.EXPECT().Now().Return(now).Times(3)
+	mockTime.EXPECT().Now().Return(now.Add(time.Hour)).Once()
+	mockTime.EXPECT().Now().Return(now).Times(1)
+	mockTime.EXPECT().Now().Return(now.Add(time.Hour)).Once()
+	debounce := DebounceLast(mockFunction.Execute, mockTime, thresholdDuration)
 
 	expectations := []struct {
 		result interface{}

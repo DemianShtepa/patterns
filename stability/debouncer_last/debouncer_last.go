@@ -9,7 +9,7 @@ import (
 
 type Function func(context.Context) (interface{}, error)
 
-func DebounceLast(fn Function, t clock.Time, ticker clock.Ticker, thresholdDuration time.Duration) Function {
+func DebounceLast(fn Function, t clock.Time, thresholdDuration time.Duration) Function {
 	var threshold = t.Now()
 	var result interface{}
 	var err error
@@ -23,7 +23,7 @@ func DebounceLast(fn Function, t clock.Time, ticker clock.Ticker, thresholdDurat
 		threshold = t.Now().Add(thresholdDuration)
 
 		once.Do(func() {
-			ticker.Reset(time.Millisecond * 100)
+			ticker := t.NewTicker(time.Millisecond * 100)
 			go func() {
 				defer func() {
 					m.Lock()
