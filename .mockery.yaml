@@ -20,3 +20,6 @@ packages:
   github.com/demianshtepa/patterns/stability/retry:
     interfaces:
       Function:
+  github.com/demianshtepa/patterns/stability/throttle:
+    interfaces:
+      Function:
